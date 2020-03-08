@@ -18,10 +18,17 @@ namespace ModConsole
                 // This happens every time you have a compiler error.
                 // Instead of throwing the error, it just says 'The expression cannot be resolved'
                 // Actual errors are sent to the LambdaWriter, so we can mostly ignore the exception.
-                
+
                 output = null;
-                
+
                 return false;
+            }
+            catch (Exception e)
+            {
+                // This is an actual exception caused by the evaluated expression.
+                output = $"<color={LambdaWriter.ERROR}>{e}</color>";
+
+                return true;
             }
         }
     }

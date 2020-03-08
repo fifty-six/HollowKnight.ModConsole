@@ -6,7 +6,7 @@ namespace ModConsole
 {
     internal class LambdaWriter : TextWriter
     {
-        private const string ERROR = "#ff5370";
+        internal const string ERROR = "#ff5370";
         private const string WARNING = "yellow";
         
         private readonly Action<string> _printer;
