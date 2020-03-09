@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions.cs" />
+    <Compile Include="GlobalSettings.cs" />
     <Compile Include="LambdaWriter.cs" />
     <Compile Include="InputFieldSubmitOnly.cs" />
     <Compile Include="ModConsole.cs" />

@@ -17,6 +17,10 @@ namespace ModConsole
     [UsedImplicitly]
     public class ModConsole : Mod, ITogglableMod
     {
+        public override ModSettings GlobalSettings { get => _settings; set => _settings = value as GlobalSettings; }
+        
+        private GlobalSettings _settings = new GlobalSettings();
+
         private GameObject _canvas;
 
         private readonly List<string> _messages = new List<string>();
@@ -192,13 +196,23 @@ namespace ModConsole
             return (bg, interact_bg);
         }
 
-        private static Font LoadFont()
+        private Font LoadFont()
         {
             Assembly asm = Assembly.GetExecutingAssembly();
 
             // If Fira Code fails to load for whatever reason, Arial is a good backup
             var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
 
+            if (!string.IsNullOrEmpty(_settings.Font))
+            {
+                font = Font.CreateDynamicFontFromOSFont(_settings.Font, 1);
+
+                if (font.name == "Arial")
+                    LogWarn("Unable to find font {_settings.Font}, falling back to Fira Code.");
+                else 
+                    return font;
+            }
+            
             foreach (string res in asm.GetManifestResourceNames())
             {
                 using (Stream s = asm.GetManifestResourceStream(res))
