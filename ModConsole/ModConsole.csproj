@@ -71,7 +71,7 @@
     <Compile Include="ModConsole.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ToggleBind.cs" />
-    <EmbeddedResource Include="Consolas" />
+    <EmbeddedResource Include="font/firacode" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

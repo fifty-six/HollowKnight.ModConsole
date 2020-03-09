@@ -196,7 +196,7 @@ namespace ModConsole
         {
             Assembly asm = Assembly.GetExecutingAssembly();
 
-            // If Consolas fails to load for whatever reason, Arial is a good backup
+            // If Fira Code fails to load for whatever reason, Arial is a good backup
             var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
 
             foreach (string res in asm.GetManifestResourceNames())
@@ -205,10 +205,10 @@ namespace ModConsole
                 {
                     AssetBundle ab = AssetBundle.LoadFromStream(s);
 
-                    var consolas = ab.LoadAsset<Font>("Consolas.ttf");
+                    var firaCode = ab.LoadAsset<Font>("FiraCode-Regular.ttf");
                     
-                    if (consolas != null)
-                        font = consolas;
+                    if (firaCode != null)
+                        font = firaCode;
                 }
             }
 
