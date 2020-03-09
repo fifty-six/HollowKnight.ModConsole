@@ -208,7 +208,7 @@ namespace ModConsole
                 font = Font.CreateDynamicFontFromOSFont(_settings.Font, 1);
 
                 if (font.name == "Arial")
-                    LogWarn("Unable to find font {_settings.Font}, falling back to Fira Code.");
+                    LogWarn($"Unable to find font {_settings.Font}, falling back to Fira Code.");
                 else 
                     return font;
             }
