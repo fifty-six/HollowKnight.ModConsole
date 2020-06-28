@@ -17,7 +17,11 @@ namespace ModConsole
     [UsedImplicitly]
     public class ModConsole : Mod, ITogglableMod
     {
-        public override ModSettings GlobalSettings { get => _settings; set => _settings = value as GlobalSettings; }
+        public override ModSettings GlobalSettings
+        {
+            get => _settings;
+            set => _settings = value as GlobalSettings;
+        }
         
         private GlobalSettings _settings = new GlobalSettings();
 
@@ -39,7 +43,12 @@ namespace ModConsole
             "using UObject = UnityEngine.Object;",
         };
 
-        private const int COUNT = 24;
+        private const int LINE_COUNT = 24;
+        
+        public override string GetVersion()
+        {
+            return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        }
 
         public override void Initialize()
         {
@@ -76,7 +85,7 @@ namespace ModConsole
 
             void AddMessage(string message)
             {
-                if (_messages.Count > COUNT)
+                if (_messages.Count > LINE_COUNT)
                 {
                     _messages.RemoveAt(0);
                 }
@@ -235,17 +244,23 @@ namespace ModConsole
 
             while ((console = GameObject.Find("ModdingApiConsoleLog")) == null)
                 yield return null;
-
+            
             console.GetComponentInChildren<Text>(true).font = font;
 
             // Hide the failed to load error for Mono.CSharp because it actually works anyways and confusing people is annoying.
             Type modLoader = Type.GetType("Modding.ModLoader, Assembly-CSharp");
+            
+            FieldInfo fi = modLoader?.GetField("_draw", BindingFlags.Static | BindingFlags.NonPublic);
 
-            if (modLoader == null) yield break;
-
-            var draw = (ModVersionDraw) modLoader.GetField("_draw", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null);
-
-            if (draw == null) yield break;
+            if (fi == null) yield break;
+            
+            ModVersionDraw draw;
+            
+            // Have to wait for it to show up because of preloading
+            while ((draw = (ModVersionDraw) fi.GetValue(null)) == null)
+            {
+                yield return null;
+            }
 
             string[] split = draw.drawString.Split('\n');
 
