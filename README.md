@@ -6,7 +6,7 @@ Can be toggled in-game using F9.
 
 Font can be customized using settings file in saves directory.
 
-Video: https://streamable.com/xhki1
+Video: https://youtu.be/NiZFeKJj7R4
 
 ![demo](https://i.imgur.com/eh85mx0.png)
 
