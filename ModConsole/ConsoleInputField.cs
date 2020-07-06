@@ -25,9 +25,9 @@ namespace ModConsole
 
         public override void OnSubmit(BaseEventData eventData)
         {
-            text = string.Empty;
-            
             _history.Add(text);
+            
+            text = string.Empty;
             
             _histInd = _history.Count;
         }
