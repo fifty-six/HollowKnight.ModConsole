@@ -68,7 +68,7 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="GlobalSettings.cs" />
     <Compile Include="LambdaWriter.cs" />
-    <Compile Include="InputFieldSubmitOnly.cs" />
+    <Compile Include="ConsoleInputField.cs" />
     <Compile Include="ModConsole.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ToggleBind.cs" />

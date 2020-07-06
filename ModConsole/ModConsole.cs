@@ -26,6 +26,7 @@ namespace ModConsole
         private GlobalSettings _settings = new GlobalSettings();
 
         private GameObject _canvas;
+        private GameObject _toggle;
 
         private readonly List<string> _messages = new List<string>();
 
@@ -57,7 +58,9 @@ namespace ModConsole
             _canvas = CanvasUtil.CreateCanvas(RenderMode.ScreenSpaceOverlay, new Vector2(1920, 1080));
             _canvas.name = "Console";
 
-            var toggle = new GameObject("Toggler").AddComponent<ToggleBind>();
+            _toggle = new GameObject("Toggler");
+            
+            var toggle = _toggle.AddComponent<ToggleBind>();
 
             toggle.Canvas = _canvas;
             toggle.StartCoroutine(ChangeAPIFont(font));
@@ -78,11 +81,11 @@ namespace ModConsole
             // Parent the input box to the canvas
             ibox.transform.parent = _canvas.transform;
 
-            var input = interactiveTextPanel.AddComponent<InputFieldSubmitOnly>();
+            var input = interactiveTextPanel.AddComponent<ConsoleInputField>();
             input.interactable = true;
             input.textComponent = interactiveTextPanel.GetComponent<Text>();
             input.textComponent.horizontalOverflow = HorizontalWrapMode.Wrap;
-
+            
             void AddMessage(string message)
             {
                 if (_messages.Count > LINE_COUNT)
@@ -165,6 +168,7 @@ namespace ModConsole
                 ),
                 font
             );
+            
             return (textPanel, interactiveTextPanel);
         }
 
@@ -177,7 +181,7 @@ namespace ModConsole
                 new CanvasUtil.RectData
                 (
                     new Vector2(600, 600),
-                    // anchor bottom left to the top-right minus the size 
+                    // Anchor bottom left to the top-right minus the size 
                     new Vector2(1920 - 600, 1080 - 600),
                     Vector2.zero,
                     Vector2.zero,
@@ -193,11 +197,11 @@ namespace ModConsole
                 CanvasUtil.NullSprite(new byte[] {0, 0, 0, 96}),
                 new CanvasUtil.RectData
                 (
-                    new Vector2(600, 20),
+                    new Vector2(600, 600),
                     // Same anchor as before, but minus the (y) size again so it's beneath the previous box.
                     new Vector2(1920 - 600, 1080 - 600 - 20),
                     Vector2.zero,
-                    Vector2.one,
+                    Vector2.zero,
                     Vector2.zero
                 )
             );
@@ -272,6 +276,7 @@ namespace ModConsole
         public void Unload()
         {
             UObject.Destroy(_canvas);
+            UObject.Destroy(_toggle);
         }
     }
 }
