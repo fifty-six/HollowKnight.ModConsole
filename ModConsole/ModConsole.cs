@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using Modding;
 using JetBrains.Annotations;
 using Mono.CSharp;
@@ -22,11 +23,13 @@ namespace ModConsole
             get => _settings;
             set => _settings = value as GlobalSettings;
         }
-        
+
         private GlobalSettings _settings = new GlobalSettings();
 
         private GameObject _canvas;
         private GameObject _toggle;
+        
+        private Evaluator _eval;
 
         private readonly List<string> _messages = new List<string>();
 
@@ -45,7 +48,7 @@ namespace ModConsole
         };
 
         private const int LINE_COUNT = 24;
-        
+
         public override string GetVersion()
         {
             return Assembly.GetExecutingAssembly().GetName().Version.ToString();
@@ -59,7 +62,7 @@ namespace ModConsole
             _canvas.name = "Console";
 
             _toggle = new GameObject("Toggler");
-            
+
             var toggle = _toggle.AddComponent<ToggleBind>();
 
             toggle.Canvas = _canvas;
@@ -71,11 +74,11 @@ namespace ModConsole
             (GameObject bg, GameObject interact_bg) = CreateBackgrounds();
 
             (GameObject textPanel, GameObject interactiveTextPanel) = CreatePanels(font, bg, interact_bg);
-            
+
             var consoleText = textPanel.GetComponent<Text>();
 
             consoleText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            
+
             var ibox = new GameObject("Input Box");
 
             // Parent the input box to the canvas
@@ -85,7 +88,7 @@ namespace ModConsole
             input.interactable = true;
             input.textComponent = interactiveTextPanel.GetComponent<Text>();
             input.textComponent.horizontalOverflow = HorizontalWrapMode.Wrap;
-            
+
             void AddMessage(string message)
             {
                 if (_messages.Count > LINE_COUNT)
@@ -99,8 +102,8 @@ namespace ModConsole
             }
 
             var writer = new LambdaWriter(AddMessage);
-            
-            var eval = new Evaluator
+
+            _eval = new Evaluator
             (
                 new CompilerContext
                 (
@@ -115,7 +118,7 @@ namespace ModConsole
             foreach (string @using in USINGS)
             {
                 // It throws an ArgumentException for any using, but it succeeds regardless
-                eval.TryEvaluate(@using, out object _);
+                _eval.TryEvaluate(@using, out object _);
             }
 
             input.onEndEdit.AddListener
@@ -126,9 +129,9 @@ namespace ModConsole
 
                     AddMessage(str);
 
-                    if (eval.TryEvaluate(str, out object output))
+                    if (_eval.TryEvaluate(str, out object output))
                     {
-                        AddMessage($"=> {output ?? "null"}");
+                        AddMessage($"=> {Inspect(output)}");
                     }
                 }
             );
@@ -168,7 +171,7 @@ namespace ModConsole
                 ),
                 font
             );
-            
+
             return (textPanel, interactiveTextPanel);
         }
 
@@ -205,7 +208,7 @@ namespace ModConsole
                     Vector2.zero
                 )
             );
-            
+
             return (bg, interact_bg);
         }
 
@@ -222,21 +225,20 @@ namespace ModConsole
 
                 if (font.name == "Arial")
                     LogWarn($"Unable to find font {_settings.Font}, falling back to Fira Code.");
-                else 
+                else
                     return font;
             }
-            
+
             foreach (string res in asm.GetManifestResourceNames())
             {
-                using (Stream s = asm.GetManifestResourceStream(res))
-                {
-                    AssetBundle ab = AssetBundle.LoadFromStream(s);
+                using Stream s = asm.GetManifestResourceStream(res);
+                
+                AssetBundle ab = AssetBundle.LoadFromStream(s);
 
-                    var firaCode = ab.LoadAsset<Font>("FiraCode-Regular.ttf");
-                    
-                    if (firaCode != null)
-                        font = firaCode;
-                }
+                var firaCode = ab.LoadAsset<Font>("FiraCode-Regular.ttf");
+
+                if (firaCode != null)
+                    font = firaCode;
             }
 
             return font;
@@ -244,22 +246,25 @@ namespace ModConsole
 
         private static IEnumerator ChangeAPIFont(Font font)
         {
-            GameObject console;
+            if (ReflectionHelper.GetAttr<ModHooks, ModHooksGlobalSettings>(ModHooks.Instance, "_globalSettings").ShowDebugLogInGame)
+            {
+                GameObject console;
 
-            while ((console = GameObject.Find("ModdingApiConsoleLog")) == null)
-                yield return null;
-            
-            console.GetComponentInChildren<Text>(true).font = font;
+                while ((console = GameObject.Find("ModdingApiConsoleLog")) == null)
+                    yield return null;
+
+                console.GetComponentInChildren<Text>(true).font = font;
+            }
 
             // Hide the failed to load error for Mono.CSharp because it actually works anyways and confusing people is annoying.
             Type modLoader = Type.GetType("Modding.ModLoader, Assembly-CSharp");
-            
+
             FieldInfo fi = modLoader?.GetField("_draw", BindingFlags.Static | BindingFlags.NonPublic);
 
             if (fi == null) yield break;
-            
+
             ModVersionDraw draw;
-            
+
             // Have to wait for it to show up because of preloading
             while ((draw = (ModVersionDraw) fi.GetValue(null)) == null)
             {
@@ -273,10 +278,128 @@ namespace ModConsole
             draw.drawString = string.Join("\n", split);
         }
 
+        private string Inspect(object result, InspectionType type = InspectionType.Fields)
+        {
+            switch (result) 
+            {
+                case null:
+                    return "null";
+                
+                case string str:
+                    return str;
+            }
+
+            Type rType = result.GetType();
+
+            var sb = new StringBuilder();
+
+            sb.AppendLine($"[{rType}]");
+            sb.AppendLine($"{result}");
+
+            FieldInfo[] fields = rType.GetFields(BindingFlags.Public | BindingFlags.Instance).OrderBy(x => x.Name).ToArray();
+            PropertyInfo[] properties = rType.GetProperties(BindingFlags.Public | BindingFlags.Instance).OrderBy(x => x.Name).ToArray();
+
+            if (fields.Length == 0)
+                type = InspectionType.Properties;
+
+            if (properties.Length == 0)
+                type = InspectionType.Fields;
+
+            switch (type)
+            {
+                case InspectionType.Fields:
+                    foreach (FieldInfo field in fields)
+                        AppendMemberInfo(result, field, sb);
+                    break;
+                case InspectionType.Properties:
+                    foreach (PropertyInfo property in properties)
+                        AppendMemberInfo(result, property, sb);
+                    break;
+            }
+
+            return sb.ToString();
+        }
+
+        private static void AppendMemberInfo(object result, MemberInfo member, StringBuilder sb)
+        {
+            object value = null;
+
+            try
+            {
+                switch (member)
+                {
+                    case PropertyInfo p:
+                    {
+                        // Indexer propertty
+                        if (p.GetIndexParameters().Length != 0)
+                            return;
+
+                        value = p.GetValue(result, null);
+                        break;
+                    }
+
+                    case FieldInfo fi:
+                    {
+                        value = fi.GetValue(result);
+                        break;
+                    }
+                };
+            }
+            catch (TargetInvocationException)
+            {
+                // yeet 
+            }
+
+            sb.Append("<color=#14f535>").Append(member.Name.PadRight(30)).Append("</color>");
+
+            switch (value)
+            {
+                case string s:
+                    sb.AppendLine(s);
+                    break;
+                case IEnumerable e:
+                    IEnumerable<object> collection = e.Cast<object>();
+
+                    // Don't have multiple enumerations
+                    IEnumerable<object> enumerated = collection as object[] ?? collection.ToArray();
+
+                    int count = enumerated.Count();
+
+                    Type type = enumerated.FirstOrDefault()?.GetType();
+
+                    if ((type?.IsPrimitive ?? false) || type == typeof(string))
+                    {
+                        sb.Append("[");
+                        
+                        sb.Append(string.Join(", ", enumerated.Take(Math.Min(5, count)).Select(x => x.ToString()).ToArray()));
+
+                        if (count > 5)
+                            sb.Append(", ...");
+
+                        sb.AppendLine("]");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"Item Count: {count}");
+                    }
+
+                    break;
+                default:
+                    sb.AppendLine(value?.ToString() ?? "null");
+                    break;
+            }
+        }
+
         public void Unload()
         {
             UObject.Destroy(_canvas);
             UObject.Destroy(_toggle);
         }
+    }
+
+    internal enum InspectionType
+    {
+        Fields,
+        Properties
     }
 }
