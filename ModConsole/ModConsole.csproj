@@ -66,8 +66,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Canvas.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="FontUtil.cs" />
     <Compile Include="GlobalSettings.cs" />
+    <Compile Include="Inspector.cs" />
     <Compile Include="LambdaWriter.cs" />
     <Compile Include="ConsoleInputField.cs" />
     <Compile Include="ModConsole.cs" />
