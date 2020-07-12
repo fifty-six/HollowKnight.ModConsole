@@ -47,7 +47,7 @@ namespace ModConsole
             "using UObject = UnityEngine.Object;",
         };
 
-        private const int LINE_COUNT = 24;
+        private const int LINE_COUNT = 40;
 
         public override string GetVersion()
         {
@@ -91,13 +91,18 @@ namespace ModConsole
 
             void AddMessage(string message)
             {
-                if (_messages.Count > LINE_COUNT)
+                string[] lines = message.Split('\n');
+                
+                foreach (string line in lines)
                 {
-                    _messages.RemoveAt(0);
+                    IEnumerable<string> chunks = Chunks(line, 80);
+                    
+                    _messages.AddRange(chunks);
                 }
-
-                _messages.Add(message);
-
+                
+                while (_messages.Count > LINE_COUNT)
+                    _messages.RemoveAt(0);
+                
                 consoleText.text = string.Join("\n", _messages.ToArray());
             }
 
@@ -120,7 +125,7 @@ namespace ModConsole
                 // It throws an ArgumentException for any using, but it succeeds regardless
                 _eval.TryEvaluate(@using, out object _);
             }
-
+            
             input.onEndEdit.AddListener
             (
                 str =>
@@ -278,7 +283,7 @@ namespace ModConsole
             draw.drawString = string.Join("\n", split);
         }
 
-        private string Inspect(object result, InspectionType type = InspectionType.Fields)
+        private static string Inspect(object result, InspectionType type = InspectionType.Fields)
         {
             switch (result) 
             {
@@ -388,6 +393,12 @@ namespace ModConsole
                     sb.AppendLine(value?.ToString() ?? "null");
                     break;
             }
+        }
+        
+        private static IEnumerable<string> Chunks(string str, int maxChunkSize) 
+        {
+            for (int i = 0; i < str.Length; i += maxChunkSize) 
+                yield return str.Substring(i, Math.Min(maxChunkSize, str.Length-i));
         }
 
         public void Unload()
