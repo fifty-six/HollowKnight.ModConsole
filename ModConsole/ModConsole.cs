@@ -153,7 +153,35 @@ namespace ModConsole
         private static IEnumerable<string> Chunks(string str, int maxChunkSize)
         {
             for (int i = 0; i < str.Length; i += maxChunkSize)
-                yield return str.Substring(i, Math.Min(maxChunkSize, str.Length - i));
+            {
+                string chunk = str.Substring(i, Math.Min(maxChunkSize, str.Length - i));
+
+                if (chunk.Contains("<color="))
+                {
+                    int begin_tag = chunk.IndexOf("<color=");
+                    
+                    // Find the end of the initial tag
+                    int tag = i + chunk.IndexOf("\">", begin_tag) + 2;
+                    
+                    // End tag
+                    int end_tag = chunk.IndexOf("</color>", tag);
+                    
+                    // Length of the tags
+                    int inital_tag_len = tag == -1 ? "<color=\"".Length : begin_tag - tag;
+                    int end_tag_len = end_tag == -1 ? 0 : "</color".Length;
+
+                    // Same chunk, but now we don't include the tag length in the chunk size.
+                    yield return str.Substring(i, Math.Min(maxChunkSize + inital_tag_len + end_tag_len, str.Length - i));
+
+                    // Have to increment the i
+                    i += inital_tag_len;
+                    i += end_tag_len;
+
+                    continue;
+                }
+
+                yield return chunk;
+            }
         }
 
         public void Unload()
