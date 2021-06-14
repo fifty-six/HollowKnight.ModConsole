@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Modding;
 using JetBrains.Annotations;
 using Mono.CSharp;
 using UnityEngine;
 using UnityEngine.UI;
+using Vasi;
 using USceneManager = UnityEngine.SceneManagement.SceneManager;
 using UObject = UnityEngine.Object;
 
@@ -15,22 +15,18 @@ namespace ModConsole
     [UsedImplicitly]
     public class ModConsole : Mod, ITogglableMod
     {
-        public override ModSettings GlobalSettings
-        {
-            get => _settings;
-            set => _settings = value as GlobalSettings;
-        }
+        [UsedImplicitly]
+        public static ModConsole Instance { get; set; }
 
-        private GlobalSettings _settings = new GlobalSettings();
-
-        internal static ModConsole Instance;
-
+        [UsedImplicitly]
+        public Action<string> LogToConsole { get; set; }
+        
         private GameObject _canvas;
         private GameObject _toggle;
 
         private Evaluator _eval;
 
-        private readonly List<string> _messages = new List<string>();
+        private readonly List<string> _messages = new();
 
         private readonly string[] USINGS =
         {
@@ -48,18 +44,13 @@ namespace ModConsole
 
         private const int LINE_COUNT = 40;
 
-        public override string GetVersion()
-        {
-            return Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        }
+        public override string GetVersion() => VersionUtil.GetVersion<ModConsole>();
 
         public override void Initialize()
         {
             Instance = this;
-
-            Font font = FontUtil.LoadFont(_settings.Font);
-
-            (ConsoleInputField input, Text consoleText) = SetupCanvas(font);
+            
+            (ConsoleInputField input, Text consoleText) = SetupCanvas(FontUtil.Font);
 
             void AddMessage(string message)
             {
@@ -92,11 +83,15 @@ namespace ModConsole
                 )
             );
 
+            LogToConsole = AddMessage;
+
             foreach (string @using in USINGS)
             {
                 // It throws an ArgumentException for any using, but it succeeds regardless
                 _eval.TryEvaluate(@using, out object _);
             }
+            
+            _eval.TryEvaluate("Action<string> Log = ModConsole.ModConsole.Instance.LogToConsole", out _);
 
             input.onEndEdit.AddListener
             (
@@ -124,7 +119,6 @@ namespace ModConsole
             var toggle = _toggle.AddComponent<ToggleBind>();
 
             toggle.Canvas = _canvas;
-            toggle.StartCoroutine(FontUtil.ChangeAPIFont(font));
 
             UObject.DontDestroyOnLoad(_canvas);
             UObject.DontDestroyOnLoad(toggle);
